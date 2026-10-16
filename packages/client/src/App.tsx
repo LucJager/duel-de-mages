@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameState, RoomView, RoundResult } from '@dm/shared';
 import { isMuted, setMuted } from './audio';
 import { socket } from './socket';
-import { getToken, load, save } from './storage';
+import { getToken, load, save, sessionRoom } from './storage';
 import { Game } from './components/Game';
 import { GameOver } from './components/GameOver';
 import { Home } from './components/Home';
@@ -28,9 +28,11 @@ export function App() {
   const [muted, setMutedState] = useState(isMuted());
 
   // Salle rejointe : sert à la reprise automatique après reconnexion / rechargement
-  const joined = useRef<string | null>(sessionStorage.getItem('dm-room') === urlCode ? urlCode : null);
+  const joined = useRef<string | null>(sessionRoom() === urlCode ? urlCode : null);
   // Dernier état de partie vu en planification = état AVANT la manche résolue
   const planningGame = useRef<GameState | null>(null);
+  // Salle quittée : on ignore les room:state encore en route
+  const leftCode = useRef<string | null>(null);
   const nameRef = useRef(name);
 
   const setName = (n: string) => {
@@ -41,7 +43,7 @@ export function App() {
 
   const enterRoom = useCallback((code: string) => {
     joined.current = code;
-    sessionStorage.setItem('dm-room', code);
+    sessionRoom(code);
     setPath(`/r/${code}`);
     setUrlCode(code);
     setError(null);
@@ -50,11 +52,15 @@ export function App() {
   const join = useCallback(
     (code: string) => {
       setBusy(true);
+      leftCode.current = null;
       socket.emit('room:join', { code, name: nameRef.current.trim(), token }, (res) => {
         setBusy(false);
         if (res.ok) return enterRoom(code);
         joined.current = null;
-        sessionStorage.removeItem('dm-room');
+        sessionRoom(null);
+        planningGame.current = null;
+        setView(null);
+        setReveal(null);
         setError(res.error);
       });
     },
@@ -63,6 +69,7 @@ export function App() {
 
   const create = () => {
     setBusy(true);
+    leftCode.current = null;
     socket.emit('room:create', { name: name.trim(), token }, (res) => {
       setBusy(false);
       if (res.ok) enterRoom(res.code);
@@ -72,8 +79,9 @@ export function App() {
 
   const leave = useCallback(() => {
     socket.emit('room:leave');
+    leftCode.current = joined.current;
     joined.current = null;
-    sessionStorage.removeItem('dm-room');
+    sessionRoom(null);
     planningGame.current = null;
     setView(null);
     setReveal(null);
@@ -83,8 +91,14 @@ export function App() {
 
   useEffect(() => {
     const onState = (v: RoomView) => {
+      if (v.code === leftCode.current) return;
       setOffset(v.serverNow - Date.now());
-      if (v.phase === 'planning' && v.game) planningGame.current = v.game;
+      if (v.phase === 'planning' && v.game) {
+        planningGame.current = v.game;
+        // Révélation périmée (onglet gelé en arrière-plan) : on la coupe
+        const round = v.game.round;
+        setReveal((r) => (r && r.result.round < round ? null : r));
+      }
       setView(v);
     };
     const onResult = (r: RoundResult) => {

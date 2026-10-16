@@ -53,6 +53,7 @@ export function Game({ view, offset }: Props) {
   }
 
   const add = (a: Action) => {
+    if (!canEdit) return;
     setPlan([...plan, a]);
     setPicking(null);
     setError(null);

@@ -60,12 +60,13 @@ io.on('connection', (raw) => {
     return { code, playerId };
   };
 
-  const detach = () => {
+  /** `voluntary` : départ explicite (sinon simple déconnexion, la place est gardée). */
+  const detach = (voluntary = true) => {
     const { code, playerId } = socket.data;
     socket.data = {};
     if (!code || !playerId || sockets.get(playerId) !== socket) return;
     sockets.delete(playerId);
-    rooms.leave(code, playerId);
+    rooms.leave(code, playerId, voluntary);
   };
 
   const attach = (code: string, playerId: PlayerId) => {
@@ -97,7 +98,7 @@ io.on('connection', (raw) => {
     }),
   );
 
-  socket.on('room:leave', () => handle(null, detach));
+  socket.on('room:leave', () => handle(null, () => detach()));
 
   socket.on('game:start', (ack) =>
     handle(ack, () => {
@@ -120,7 +121,7 @@ io.on('connection', (raw) => {
     }),
   );
 
-  socket.on('disconnect', detach);
+  socket.on('disconnect', () => detach(false));
 });
 
 await app.listen({ port, host: '0.0.0.0' });

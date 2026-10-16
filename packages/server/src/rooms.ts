@@ -136,13 +136,19 @@ export class RoomManager {
     if (!room) throw new RoomError('Salle introuvable');
     const known = room.members.find((m) => m.token === tok);
     if (known) {
-      // Reconnexion : il reprend sa place
+      // Reconnexion : il reprend sa place, et l'hôte s'il était absent
       known.connected = true;
       if (room.phase === 'lobby') known.name = cleanName(name);
+      if (!room.members.find((m) => m.id === room.hostId)?.connected) room.hostId = known.id;
     } else {
       const n = cleanName(name);
       if (room.phase !== 'lobby') throw new RoomError('Partie déjà en cours');
-      if (room.members.length >= MAX_PLAYERS) throw new RoomError('Salle pleine');
+      if (room.members.length >= MAX_PLAYERS) {
+        // Un absent du lobby cède sa place
+        const ghost = room.members.find((m) => !m.connected);
+        if (!ghost) throw new RoomError('Salle pleine');
+        room.members = room.members.filter((m) => m !== ghost);
+      }
       room.members.push({ id: newId(), token: tok, name: n, connected: true });
     }
     this.touch(room);
@@ -150,12 +156,15 @@ export class RoomManager {
     return { you: (known ?? room.members.at(-1)!).id };
   }
 
-  /** Départ volontaire ou déconnexion. */
-  leave(code: string, playerId: PlayerId) {
+  /**
+   * Départ volontaire, ou déconnexion (`voluntary = false`) : le joueur garde
+   * alors sa place, même en lobby, pour pouvoir revenir avec son token.
+   */
+  leave(code: string, playerId: PlayerId, voluntary = true) {
     const room = this.rooms.get(code);
     const member = room?.members.find((m) => m.id === playerId);
     if (!room || !member) return;
-    if (room.phase === 'lobby') {
+    if (room.phase === 'lobby' && voluntary) {
       room.members = room.members.filter((m) => m !== member);
       if (!room.members.length) return this.remove(room);
     } else {
@@ -172,7 +181,10 @@ export class RoomManager {
   start(code: string, playerId: PlayerId) {
     const room = this.hostRoom(code, playerId);
     if (room.phase !== 'lobby') throw new RoomError('Partie déjà lancée');
-    if (room.members.length < MIN_PLAYERS) throw new RoomError(`Il faut au moins ${MIN_PLAYERS} joueurs`);
+    if (room.members.filter((m) => m.connected).length < MIN_PLAYERS) {
+      throw new RoomError(`Il faut au moins ${MIN_PLAYERS} joueurs`);
+    }
+    room.members = room.members.filter((m) => m.connected);
     this.newGame(room);
   }
 

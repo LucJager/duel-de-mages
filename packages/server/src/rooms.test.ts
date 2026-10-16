@@ -75,6 +75,29 @@ describe('salles', () => {
     expect(views.get(b)!.players).toHaveLength(2);
   });
 
+  it('en lobby, une déconnexion garde la place et la salle', () => {
+    const { rooms, views } = setup();
+    const { code, you: a } = rooms.create('Alice', 'tok-a');
+    rooms.leave(code, a, false);
+    expect(rooms.has(code)).toBe(true);
+    expect(rooms.join(code, 'Alice', 'tok-a').you).toBe(a);
+    const { you: b } = rooms.join(code, 'Bob', 'tok-b');
+    rooms.leave(code, b, false);
+    expect(() => rooms.start(code, a)).toThrow('au moins');
+    expect(views.get(a)!.hostId).toBe(a);
+  });
+
+  it('un joueur qui revient reprend l’hôte si celui-ci est absent', () => {
+    const { rooms, views } = setup();
+    const { code, you: a } = rooms.create('Alice', 'tok-a');
+    const { you: b } = rooms.join(code, 'Bob', 'tok-b');
+    rooms.start(code, a);
+    rooms.leave(code, b, false);
+    rooms.leave(code, a, false);
+    rooms.join(code, 'Bob', 'tok-b');
+    expect(views.get(b)!.hostId).toBe(b);
+  });
+
   it('start réservé à l’hôte, avec assez de joueurs', () => {
     const s = setup();
     const { code, you: a } = s.rooms.create('Alice', 'tok-a');

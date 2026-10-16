@@ -30,7 +30,7 @@ export function applyStep(d: Display, events: GameEvent[]): Display {
         mages[e.player].pos = e.to;
         break;
       case 'trapTriggered':
-        traps = traps.filter((t) => !samePos(t.pos, e.at));
+        traps = traps.filter((t) => !(t.owner === e.owner && samePos(t.pos, e.at)));
         break;
       case 'trapPlaced':
         traps = [...traps.filter((t) => t.owner !== e.player), { owner: e.player, pos: e.at }];
