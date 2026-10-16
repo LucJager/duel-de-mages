@@ -1,0 +1,23 @@
+{
+  "name": "@dm/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:smoke": "tsx smoke/smoke.ts"
+  },
+  "dependencies": {
+    "@dm/shared": "workspace:*",
+    "@fastify/static": "^10.1.6",
+    "fastify": "^5.12.7",
+    "socket.io": "^4.8.4",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "socket.io-client": "^4.8.4",
+    "vitest": "^5.0.5"
+  }
+}
