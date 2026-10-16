@@ -24,8 +24,6 @@ export interface RoomView {
   deadline: number | null;
   /** Horloge serveur au moment de l'envoi, pour corriger le décalage. */
   serverNow: number;
-  /** Dernière manche résolue (pour rejouer l'animation après reconnexion). */
-  lastResult: RoundResult | null;
   /** Manches résolues de la partie en cours, de la plus ancienne à la plus récente (filtrées pour moi). */
   history: RoundResult[];
   /** Mon plan déjà soumis pour la manche en cours. */

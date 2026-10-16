@@ -4,7 +4,7 @@ import { DIRS, samePos } from '@dm/shared';
 import type { GameEvent, PlayerId, RoundResult } from '@dm/shared';
 import { play } from '../audio';
 import type { Sfx } from '../audio';
-import { EVENT_DELAY, OUTRO_MS, PLANS_MS, STEP_MS, applyStep, displayFrom } from '../reveal';
+import { EVENT_DELAY, OUTRO_MS, PLANS_MS, STEP_MS, applyStep, delayOf, displayFrom } from '../reveal';
 import { Board, at } from './Board';
 import { PlayerBar } from './PlayerBar';
 import { ActionChip, IceSprite, Img, MageSprite, MeteorSprite, TrapSprite } from './Sprites';
@@ -30,6 +30,8 @@ export function Reveal({ result, you, onDone }: Props) {
   const before = result.start;
   // -1 = présentation des plans, puis index du step joué
   const [stage, setStage] = useState(-1);
+  // Dans un step avec bourrasque : false = après la marche, true = après la poussée
+  const [pushPhase, setPushPhase] = useState(false);
   const done = useRef(onDone);
   useEffect(() => {
     done.current = onDone;
@@ -46,14 +48,22 @@ export function Reveal({ result, you, onDone }: Props) {
     const timers: number[] = [];
     result.steps.forEach((events, i) => {
       const t0 = PLANS_MS + i * STEP_MS;
-      timers.push(window.setTimeout(() => setStage(i), t0));
-      const played = new Set<Sfx>();
-      for (const e of events) {
-        const sfx = SFX[e.type];
-        if (!sfx || played.has(sfx)) continue;
-        played.add(sfx);
-        timers.push(window.setTimeout(() => play(sfx), t0 + EVENT_DELAY[e.type]));
+      timers.push(
+        window.setTimeout(() => {
+          setStage(i);
+          setPushPhase(false);
+        }, t0),
+      );
+      if (events.some((e) => e.type === 'move' && e.kind === 'push')) {
+        timers.push(window.setTimeout(() => setPushPhase(true), t0 + EVENT_DELAY.gust));
       }
+      const played = new Set<Sfx>();
+      events.forEach((e, k) => {
+        const sfx = SFX[e.type];
+        if (!sfx || played.has(sfx)) return;
+        played.add(sfx);
+        timers.push(window.setTimeout(() => play(sfx), t0 + delayOf(events, k)));
+      });
     });
     timers.push(window.setTimeout(() => done.current(), PLANS_MS + result.steps.length * STEP_MS + OUTRO_MS));
     return () => timers.forEach(clearTimeout);
@@ -68,7 +78,7 @@ export function Reveal({ result, you, onDone }: Props) {
 
   const fx: ReactNode[] = [];
   step.forEach((e, k) => {
-    const d = { '--d': `${EVENT_DELAY[e.type]}ms` } as CSSProperties;
+    const d = { '--d': `${delayOf(step, k)}ms` } as CSSProperties;
     const key = `${stage}-${k}`;
     switch (e.type) {
       case 'shield':
@@ -161,6 +171,9 @@ export function Reveal({ result, you, onDone }: Props) {
   const hurt = new Set(step.flatMap((e) => (e.type === 'damage' ? [e.player] : [])));
   const teleported = new Set(step.flatMap((e) => (e.type === 'move' && e.kind === 'teleport' ? [e.player] : [])));
   const pushed = new Set(step.flatMap((e) => (e.type === 'move' && e.kind === 'push' ? [e.player] : [])));
+  // Position après la marche, avant la poussée
+  const walked = new Map(step.flatMap((e) => (e.type === 'move' && e.kind !== 'push' ? [[e.player, e.to] as const] : [])));
+  const shownPos = (id: PlayerId) => (pushed.has(id) && !pushPhase ? (walked.get(id) ?? prev.mages[id].pos) : cur.mages[id].pos);
   const placed = step.flatMap((e) => (e.type === 'icePlaced' ? [e.at] : []));
   const shooters = Object.keys(result.plans);
 
@@ -210,8 +223,8 @@ export function Reveal({ result, you, onDone }: Props) {
               return (
                 <div
                   key={tp ? `${p.id}-tp-${stage}` : p.id}
-                  className={`piece mage c${p.color}${p.id === you ? ' me' : ''}${tp ? ' tp-in' : ''}${pushed.has(p.id) ? ' pushed' : ''}${hurt.has(p.id) ? ' hurt' : ''}${m.alive ? '' : ' dying'}`}
-                  style={at(m.pos)}
+                  className={`piece mage c${p.color}${p.id === you ? ' me' : ''}${tp ? ' tp-in' : ''}${hurt.has(p.id) ? ' hurt' : ''}${m.alive ? '' : ' dying'}`}
+                  style={at(shownPos(p.id))}
                 >
                   <MageSprite color={p.color} />
                 </div>

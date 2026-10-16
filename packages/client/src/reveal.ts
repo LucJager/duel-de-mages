@@ -118,6 +118,13 @@ export const EVENT_DELAY: Record<GameEvent['type'], number> = {
   iceMelted: 1000,
 };
 
+/** Délai d'un événement de son step : les dégâts de fin de manche (lave) passent après ceux des actions. */
+export function delayOf(events: GameEvent[], k: number): number {
+  const e = events[k];
+  const lava = events.findIndex((x) => x.type === 'lava');
+  return lava >= 0 && k > lava && (e.type === 'damage' || e.type === 'death') ? EVENT_DELAY[e.type] + 250 : EVENT_DELAY[e.type];
+}
+
 export const PLANS_MS = 1500;
 export const STEP_MS = 1200;
 export const OUTRO_MS = 700;

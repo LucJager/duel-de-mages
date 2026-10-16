@@ -120,7 +120,7 @@ export function bonusText(state: GameState): string | null {
     case 'recharge':
       return 'Recharge — aucun sort en recharge cette manche';
     case 'heal':
-      return 'Soin — chaque mage a récupéré 1 PV';
+      return 'Soin — les mages blessés récupèrent 1 PV';
     case 'haste':
       return `Hâte — ${slotsFor(state)} actions cette manche`;
     default:

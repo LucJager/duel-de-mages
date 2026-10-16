@@ -332,6 +332,15 @@ describe('bourrasque', () => {
     expect(r.state.players[1].hp).toBe(2);
   });
 
+  it('marcher sur un piège puis être repoussé le déclenche quand même', () => {
+    const g = game([{ x: 1, y: 2 }, { x: 4, y: 4 }, { x: 3, y: 2 }]);
+    g.traps = [{ owner: 'p1', pos: { x: 2, y: 2 } }];
+    const r = resolveRound(g, { p0: [mv('right')], p2: [GU] });
+    expect(r.state.players[0].pos).toEqual({ x: 1, y: 2 });
+    expect(r.state.players[0].hp).toBe(2);
+    expect(r.state.traps).toHaveLength(0);
+  });
+
   it('pousse sur la lave en fin de manche', () => {
     const r = resolveRound(game([{ x: 2, y: 2 }, { x: 3, y: 2 }], { round: 6 }), { p0: [W, W, GU] });
     expect(r.state.players[1].pos).toEqual({ x: 4, y: 2 });

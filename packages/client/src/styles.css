@@ -1541,10 +1541,7 @@ button:disabled {
   80% { translate: 3px 2px; }
 }
 
-/* Bourrasque : onde autour du lanceur, glissé du mage poussé */
-.mage.pushed {
-  transition-delay: 250ms;
-}
+/* Bourrasque : onde autour du lanceur */
 
 .fx-gust {
   z-index: 4;

@@ -31,17 +31,26 @@ export function Game({ view, offset }: Props) {
   const me = game.players.find((p) => p.id === view.you);
   const [plan, setPlan] = useState<Action[]>(view.myPlan ?? []);
   const [submitted, setSubmitted] = useState(!!view.myPlan);
+  // Envoi en cours : tout est verrouillé jusqu'à la réponse du serveur
+  const [pending, setPending] = useState(false);
   const [picking, setPicking] = useState<Picking>(null);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const now = useNow(200);
+
+  // Plan déjà validé côté serveur (ex. réponse perdue lors d'une reconnexion)
+  useEffect(() => {
+    if (pending || !view.myPlan) return;
+    setPlan(view.myPlan);
+    setSubmitted(true);
+  }, [view.myPlan, pending]);
 
   const remaining = view.deadline ? Math.max(0, view.deadline - (now + offset)) : 0;
   const secs = Math.ceil(remaining / 1000);
   const planning = view.phase === 'planning';
   const open = planning && !!me?.alive && remaining > 0;
   // Plan validé : slots et palette verrouillés jusqu'à l'annulation
-  const canEdit = open && !submitted;
+  const canEdit = open && !submitted && !pending;
   const slots = slotsFor(game);
 
   const preview = me ? previewPlan(me.pos, game.size, plan, me.stunned, game.ice.map((i) => i.pos)) : [];
@@ -82,7 +91,9 @@ export function Game({ view, offset }: Props) {
   };
 
   const submit = () => {
+    setPending(true);
     socket.emit('plan:submit', { actions: plan }, (res) => {
+      setPending(false);
       if (res.ok) setSubmitted(true);
       else setError(res.error);
     });
@@ -211,7 +222,7 @@ export function Game({ view, offset }: Props) {
           ) : (
             <div className="palette">
               {PALETTE.map((type) => {
-                const why = canEdit ? cannotAdd(game, view.you, plan, type) : submitted ? 'Plan validé' : 'Trop tard';
+                const why = canEdit ? cannotAdd(game, view.you, plan, type) : submitted || pending ? 'Plan validé' : 'Trop tard';
                 const cd = cooldownLeft(game, me, type);
                 return (
                   <button

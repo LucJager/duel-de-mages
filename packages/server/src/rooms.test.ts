@@ -215,7 +215,7 @@ describe('manches', () => {
     for (const id of [a, b, c]) {
       const v = views.get(id)!;
       expect(v.game!.traps.every((t) => t.owner === id)).toBe(true);
-      expect(v.lastResult!.state.traps.every((t) => t.owner === id)).toBe(true);
+      expect(v.history.at(-1)!.state.traps.every((t) => t.owner === id)).toBe(true);
     }
     expect(views.get(a)!.game!.traps).toEqual([{ owner: a, pos: { x: 0, y: 1 } }]);
     expect(views.get(c)!.game!.traps).toEqual([]);

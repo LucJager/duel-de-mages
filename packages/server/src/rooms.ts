@@ -36,7 +36,6 @@ interface Room {
   plans: Map<PlayerId, Action[]>;
   deadline: number | null;
   timer: ReturnType<typeof setTimeout> | null;
-  lastResult: RoundResult | null;
   /** Manches résolues de la partie en cours (non filtrées). */
   history: RoundResult[];
   lastActivity: number;
@@ -143,7 +142,6 @@ export class RoomManager {
       plans: new Map(),
       deadline: null,
       timer: null,
-      lastResult: null,
       history: [],
       lastActivity: Date.now(),
     };
@@ -216,7 +214,6 @@ export class RoomManager {
     if (room.phase !== 'over') throw new RoomError('La partie n’est pas terminée');
     // Les absents perdent leur place
     room.members = room.members.filter((m) => m.connected);
-    room.lastResult = null;
     room.history = [];
     if (room.members.length >= MIN_PLAYERS) return this.newGame(room);
     room.phase = 'lobby';
@@ -276,7 +273,6 @@ export class RoomManager {
 
   private newGame(room: Room) {
     room.game = createGame(room.members.map((m) => ({ id: m.id, name: m.name })), room.mode);
-    room.lastResult = null;
     room.history = [];
     this.planning(room);
   }
@@ -298,7 +294,6 @@ export class RoomManager {
   private resolve(room: Room) {
     const result = resolveRound(room.game!, Object.fromEntries(room.plans));
     room.game = result.state;
-    room.lastResult = result;
     room.history.push(result);
     room.plans.clear();
     for (const m of room.members) this.events.result(m.id, resultFor(result, m.id));
@@ -349,7 +344,6 @@ export class RoomManager {
       game: room.game && viewFor(room.game, you),
       deadline: room.deadline,
       serverNow: Date.now(),
-      lastResult: room.lastResult && resultFor(room.lastResult, you),
       history: room.history.map((r) => resultFor(r, you)),
       myPlan: (room.phase === 'planning' && room.plans.get(you)) || null,
     };

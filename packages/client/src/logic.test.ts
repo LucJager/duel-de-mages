@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGame, resolveRound } from '@dm/shared';
 import type { RoundResult } from '@dm/shared';
 import { bonusText, cannotAdd, cooldownLeft, dirTo, nextLavaRound, plannedPos, previewPlan, teleportTargets } from './plan';
-import { applyStep, displayFrom, summarize } from './reveal';
+import { EVENT_DELAY, applyStep, delayOf, displayFrom, summarize } from './reveal';
 
 const duel = () => createGame([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
 
@@ -183,5 +183,17 @@ describe('summarize', () => {
   it('ne dit rien d\'une manche calme', () => {
     const r: RoundResult = resolveRound(duel(), {});
     expect(summarize(r)).toEqual([]);
+  });
+});
+
+describe('delayOf', () => {
+  it('les dégâts de lave passent après ceux des actions', () => {
+    const events: RoundResult['steps'][number] = [
+      { type: 'damage', player: 'a', amount: 1, hp: 2 },
+      { type: 'lava', player: 'a', at: { x: 0, y: 0 } },
+      { type: 'damage', player: 'a', amount: 1, hp: 1 },
+    ];
+    expect(delayOf(events, 0)).toBe(EVENT_DELAY.damage);
+    expect(delayOf(events, 2)).toBeGreaterThan(EVENT_DELAY.damage);
   });
 });

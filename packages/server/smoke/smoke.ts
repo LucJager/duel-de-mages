@@ -132,13 +132,13 @@ for (const name of names) {
     const others = view.players.map((p) => p.id).filter((id) => id !== view.you);
     if (view.mode !== current.mode) fail(`${name} : mode ${view.mode} au lieu de ${current.mode}`);
     // Aucun piège d'un autre joueur
-    const results = [...(view.lastResult ? [view.lastResult] : []), ...view.history];
+    const results = view.history;
     const traps = [...(view.game?.traps ?? []), ...results.flatMap((r) => [...r.start.traps, ...r.state.traps])];
     for (const t of traps) {
       if (t.owner !== view.you) fail(`${name} voit un piège de ${t.owner}`);
     }
     // Hors myPlan et résultats (révélés), la vue ne doit contenir aucune action
-    const rest = JSON.stringify({ ...view, lastResult: null, history: null, myPlan: null });
+    const rest = JSON.stringify({ ...view, history: null, myPlan: null });
     if (/"type":"(move|fireball|trap|teleport|shield|meteor|gust|ice|wait)"/.test(rest)) {
       fail(`${name} : action d'un autre joueur dans room:state (${view.phase})`);
     }

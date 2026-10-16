@@ -258,6 +258,19 @@ function resolveStep(s: GameState, acts: Map<PlayerId, Action>): GameEvent[] {
   const damage = new Map<PlayerId, number>();
   const hurt = (id: PlayerId) => damage.set(id, (damage.get(id) ?? 0) + 1);
   const iceAt = (c: Pos) => s.ice.some((i) => samePos(i.pos, c));
+  // Pièges déclenchés par les mages arrivés sur une case
+  const spring = (ids: Iterable<PlayerId>) => {
+    for (const id of ids) {
+      const p = byId.get(id)!;
+      const sprung = s.traps.filter((t) => t.owner !== id && samePos(t.pos, p.pos));
+      for (const t of sprung) {
+        ev.push({ type: 'trapTriggered', player: id, owner: t.owner, at: t.pos });
+        hurt(id);
+        p.stunned = true;
+      }
+      s.traps = s.traps.filter((t) => !sprung.includes(t));
+    }
+  };
 
   // 1. Boucliers
   const shielded = new Set<PlayerId>();
@@ -293,6 +306,7 @@ function resolveStep(s: GameState, acts: Map<PlayerId, Action>): GameEvent[] {
     ev.push({ type: 'move', player: id, from: p.pos, to: d, kind: teleporting.has(id) ? 'teleport' : 'walk' });
     p.pos = d;
   }
+  spring(dest.keys());
 
   // 3. Bourrasques : poussée d'une case à l'opposé du lanceur
   const pushDir = new Map<PlayerId, Dir>();
@@ -322,18 +336,9 @@ function resolveStep(s: GameState, acts: Map<PlayerId, Action>): GameEvent[] {
     ev.push({ type: 'move', player: id, from: p.pos, to: d, kind: 'push' });
     p.pos = d;
   }
+  spring(pushed.keys());
 
-  // 4. Pièges : déclenchement à l'arrivée, puis pose des nouveaux pièges et de la glace
-  for (const id of new Set([...dest.keys(), ...pushed.keys()])) {
-    const p = byId.get(id)!;
-    const sprung = s.traps.filter((t) => t.owner !== id && samePos(t.pos, p.pos));
-    for (const t of sprung) {
-      ev.push({ type: 'trapTriggered', player: id, owner: t.owner, at: t.pos });
-      hurt(id);
-      p.stunned = true;
-    }
-    s.traps = s.traps.filter((t) => !sprung.includes(t));
-  }
+  // 4. Pose des nouveaux pièges et de la glace (déclenchements : après chaque déplacement)
   for (const p of alive) {
     const a = acts.get(p.id)!;
     if (a.type !== 'trap' && a.type !== 'ice') continue;
