@@ -89,10 +89,8 @@ export function Game({ view, offset }: Props) {
   };
 
   const cancel = () => {
-    socket.emit('plan:cancel', (res) => {
-      if (res.ok) setSubmitted(false);
-      else setError(res.error);
-    });
+    // Échec = la manche se résout déjà (j'étais le dernier à valider) : rien à afficher
+    socket.emit('plan:cancel', (res) => res.ok && setSubmitted(false));
   };
 
   const lava = nextLavaRound(game.round);
