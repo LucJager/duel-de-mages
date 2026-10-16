@@ -29,6 +29,9 @@ export function Lobby({ view, onLeave }: { view: RoomView; onLeave: () => void }
       <div className="panel lobby-panel">
         <p className="kicker">Salle</p>
         <h2 className="room-code">{view.code}</h2>
+        <p className={`mode-tag${view.mode === 'chaos' ? ' chaos' : ''}`}>
+          Mode {view.mode === 'chaos' ? 'Chaos : un bonus surprise à chaque manche' : 'Classique'}
+        </p>
         <div className="share">
           <code>{link.replace(/^https?:\/\//, '')}</code>
           <button type="button" className="btn small" onClick={copy}>

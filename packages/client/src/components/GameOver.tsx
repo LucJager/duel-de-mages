@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { RoomView } from '@dm/shared';
 import { play } from '../audio';
 import { socket } from '../socket';
+import { History } from './History';
 import { MageSprite } from './Sprites';
 
 export function GameOver({ view, onLeave }: { view: RoomView; onLeave: () => void }) {
@@ -10,6 +11,7 @@ export function GameOver({ view, onLeave }: { view: RoomView; onLeave: () => voi
   const losers = game.players.filter((p) => p.id !== game.winner);
   const isHost = view.hostId === view.you;
   const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     play('victory');
@@ -60,10 +62,17 @@ export function GameOver({ view, onLeave }: { view: RoomView; onLeave: () => voi
           <p className="hint">L'hôte peut lancer une revanche.</p>
         )}
         {error && <p className="hint warn">{error}</p>}
+        {view.history.length > 0 && (
+          <button type="button" className="btn" onClick={() => setShowHistory(true)}>
+            Historique
+          </button>
+        )}
         <button type="button" className="btn ghost" onClick={onLeave}>
           Retour à l'accueil
         </button>
       </div>
+
+      {showHistory && <History history={view.history} you={view.you} onClose={() => setShowHistory(false)} />}
     </div>
   );
 }

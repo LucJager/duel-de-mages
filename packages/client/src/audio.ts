@@ -1,6 +1,6 @@
 import { load, save } from './storage';
 
-export type Sfx = 'fireball' | 'bonk' | 'shield' | 'trap' | 'death' | 'victory';
+export type Sfx = 'fireball' | 'bonk' | 'shield' | 'trap' | 'death' | 'victory' | 'meteor' | 'gust' | 'ice';
 
 let muted = load('dm-muted') === '1';
 
