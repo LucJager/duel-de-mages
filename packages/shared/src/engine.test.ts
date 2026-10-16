@@ -127,6 +127,7 @@ describe('boules de feu et boucliers', () => {
     expect(validatePlan(g, 'p0', [{ type: 'teleport', dx: 2, dy: 1 }])).toMatch(/distance/);
     expect(validatePlan(g, 'p0', [W, W, W, W])).toMatch(/Maximum/);
     expect(validatePlan(g, 'p0', [fb('up'), fb('down'), SH])).toBeNull();
+    expect(validatePlan(g, 'p0', [{ type: 'move', dir: 'toString' as 'up' }])).toMatch(/Direction/);
   });
 
   it('un plan invalide devient « Attendre »', () => {

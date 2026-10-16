@@ -71,7 +71,7 @@ export function validatePlan(state: GameState, playerId: PlayerId, actions: Acti
       case 'move':
       case 'fireball':
       case 'trap':
-        if (!(a.dir in DIRS)) return 'Direction invalide';
+        if (!Object.hasOwn(DIRS, a.dir)) return 'Direction invalide';
         if (a.type === 'fireball') fireballs++;
         break;
       case 'shield':
