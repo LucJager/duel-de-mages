@@ -790,17 +790,17 @@ button:disabled {
 
 .piece {
   position: absolute;
-  left: 0;
-  top: 0;
   width: calc(100% / var(--n));
   height: calc(100% / var(--n));
-  transform: translate(calc(var(--x) * 100%), calc(var(--y) * 100%));
+  /* left/top (et non transform) pour que scale/translate/animations restent relatifs à la case */
+  left: calc(var(--x) * 100% / var(--n));
+  top: calc(var(--y) * 100% / var(--n));
 }
 
 .mage {
   z-index: 3;
   padding: calc(4% / var(--n));
-  transition: transform 350ms cubic-bezier(0.4, 1.6, 0.5, 1);
+  transition: left 350ms cubic-bezier(0.4, 1.6, 0.5, 1), top 350ms cubic-bezier(0.4, 1.6, 0.5, 1);
 }
 
 .mage::before {
@@ -1205,8 +1205,8 @@ button:disabled {
 }
 
 @keyframes die {
-  30% { transform: translate(calc(var(--x) * 100%), calc(var(--y) * 100% - 15%)) rotate(-20deg); }
-  to { transform: translate(calc(var(--x) * 100%), calc(var(--y) * 100%)) rotate(90deg) scale(0.3); opacity: 0; }
+  30% { transform: translateY(-15%) rotate(-20deg); }
+  to { transform: rotate(90deg) scale(0.3); opacity: 0; }
 }
 
 .fx-smoke {
