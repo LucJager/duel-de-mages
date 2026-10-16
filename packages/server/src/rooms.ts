@@ -9,10 +9,13 @@ import {
   createGame,
   resolveRound,
   resultFor,
+  rollBonus,
+  slotsFor,
+  startRound,
   validatePlan,
   viewFor,
 } from '@dm/shared';
-import type { Action, GameState, PlayerId, RoomPhase, RoomView, RoundResult } from '@dm/shared';
+import type { Action, GameState, Mode, PlayerId, RoomPhase, RoomView, RoundResult } from '@dm/shared';
 
 const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
@@ -27,12 +30,15 @@ interface Room {
   code: string;
   hostId: PlayerId;
   phase: RoomPhase;
+  mode: Mode;
   members: Member[];
   game: GameState | null;
   plans: Map<PlayerId, Action[]>;
   deadline: number | null;
   timer: ReturnType<typeof setTimeout> | null;
   lastResult: RoundResult | null;
+  /** Manches résolues de la partie en cours (non filtrées). */
+  history: RoundResult[];
   lastActivity: number;
 }
 
@@ -48,6 +54,8 @@ export interface RoomOptions {
   planningMs?: number;
   revealMs?: number;
   idleMs?: number;
+  /** Tirage des bonus du mode Chaos (injectable pour les tests). */
+  rng?: () => number;
 }
 
 export function cleanName(name: unknown): string {
@@ -67,6 +75,12 @@ function cleanToken(token: unknown): string {
   return token;
 }
 
+function cleanMode(mode: unknown): Mode {
+  if (mode === undefined) return 'classic';
+  if (mode !== 'classic' && mode !== 'chaos') throw new RoomError('Mode invalide');
+  return mode;
+}
+
 const isDir = (d: unknown) => typeof d === 'string' && Object.hasOwn(DIRS, d);
 
 /** Reconstruit un plan propre (sans champs parasites) à partir d'un payload client. */
@@ -78,11 +92,15 @@ function cleanPlan(actions: unknown): Action[] {
       case 'move':
       case 'fireball':
       case 'trap':
+      case 'ice':
         if (!isDir(a.dir)) throw new RoomError('Direction invalide');
         return { type: a.type, dir: a.dir };
       case 'teleport':
         return { type: 'teleport', dx: a.dx, dy: a.dy };
+      case 'meteor':
+        return { type: 'meteor', x: a.x, y: a.y };
       case 'shield':
+      case 'gust':
       case 'wait':
         return { type: a.type };
       default:
@@ -96,6 +114,7 @@ export class RoomManager {
   private planningMs: number;
   private revealMs: number;
   private idleMs: number;
+  private rng: () => number;
 
   constructor(
     private events: RoomEvents,
@@ -104,9 +123,11 @@ export class RoomManager {
     this.planningMs = opts.planningMs ?? PLANNING_MS;
     this.revealMs = opts.revealMs ?? REVEAL_MS;
     this.idleMs = opts.idleMs ?? ROOM_IDLE_MS;
+    this.rng = opts.rng ?? Math.random;
   }
 
-  create(name: unknown, token: unknown): { code: string; you: PlayerId } {
+  create(name: unknown, token: unknown, mode?: unknown): { code: string; you: PlayerId } {
+    const m = cleanMode(mode);
     const member: Member = { id: newId(), token: cleanToken(token), name: cleanName(name), connected: true };
     let code: string;
     do {
@@ -116,12 +137,14 @@ export class RoomManager {
       code,
       hostId: member.id,
       phase: 'lobby',
+      mode: m,
       members: [member],
       game: null,
       plans: new Map(),
       deadline: null,
       timer: null,
       lastResult: null,
+      history: [],
       lastActivity: Date.now(),
     };
     this.rooms.set(code, room);
@@ -194,6 +217,7 @@ export class RoomManager {
     // Les absents perdent leur place
     room.members = room.members.filter((m) => m.connected);
     room.lastResult = null;
+    room.history = [];
     if (room.members.length >= MIN_PLAYERS) return this.newGame(room);
     room.phase = 'lobby';
     room.game = null;
@@ -207,11 +231,23 @@ export class RoomManager {
     if (!room || !room.game) throw new RoomError('Aucune partie en cours');
     if (room.phase !== 'planning') throw new RoomError('Ce n’est pas la phase de planification');
     const plan = cleanPlan(actions);
+    const slots = slotsFor(room.game);
+    if (plan.length !== slots) throw new RoomError(`Choisis ${slots} actions`);
     const error = validatePlan(room.game, playerId, plan);
     if (error) throw new RoomError(error);
     room.plans.set(playerId, plan);
     this.touch(room);
     if (this.allReady(room)) return this.resolve(room);
+    this.broadcast(room);
+  }
+
+  /** Retire le plan validé du joueur tant que la planification dure. */
+  cancel(code: string, playerId: PlayerId) {
+    const room = this.rooms.get(code);
+    if (!room || !room.game) throw new RoomError('Aucune partie en cours');
+    if (room.phase !== 'planning') throw new RoomError('Ce n’est pas la phase de planification');
+    room.plans.delete(playerId);
+    this.touch(room);
     this.broadcast(room);
   }
 
@@ -239,14 +275,16 @@ export class RoomManager {
   }
 
   private newGame(room: Room) {
-    room.game = createGame(room.members.map((m) => ({ id: m.id, name: m.name })));
+    room.game = createGame(room.members.map((m) => ({ id: m.id, name: m.name })), room.mode);
     room.lastResult = null;
+    room.history = [];
     this.planning(room);
   }
 
   private planning(room: Room) {
     room.phase = 'planning';
     room.plans.clear();
+    if (room.mode === 'chaos') room.game = startRound(room.game!, rollBonus(this.rng));
     this.schedule(room, this.planningMs, () => this.resolve(room));
     this.broadcast(room);
   }
@@ -261,6 +299,7 @@ export class RoomManager {
     const result = resolveRound(room.game!, Object.fromEntries(room.plans));
     room.game = result.state;
     room.lastResult = result;
+    room.history.push(result);
     room.plans.clear();
     for (const m of room.members) this.events.result(m.id, resultFor(result, m.id));
     if (result.state.over) {
@@ -299,6 +338,7 @@ export class RoomManager {
       hostId: room.hostId,
       you,
       phase: room.phase,
+      mode: room.mode,
       players: room.members.map((m, i) => ({
         id: m.id,
         name: m.name,
@@ -310,6 +350,7 @@ export class RoomManager {
       deadline: room.deadline,
       serverNow: Date.now(),
       lastResult: room.lastResult && resultFor(room.lastResult, you),
+      history: room.history.map((r) => resultFor(r, you)),
       myPlan: (room.phase === 'planning' && room.plans.get(you)) || null,
     };
   }

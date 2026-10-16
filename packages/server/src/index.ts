@@ -82,7 +82,7 @@ io.on('connection', (raw) => {
   socket.on('room:create', (p, ack) =>
     handle(ack, () => {
       detach();
-      const res = rooms.create(p?.name, p?.token);
+      const res = rooms.create(p?.name, p?.token, p?.mode);
       attach(res.code, res.you);
       return res;
     }),
@@ -111,6 +111,13 @@ io.on('connection', (raw) => {
     handle(ack, () => {
       const { code, playerId } = bound();
       rooms.submit(code, playerId, p?.actions);
+    }),
+  );
+
+  socket.on('plan:cancel', (ack) =>
+    handle(ack, () => {
+      const { code, playerId } = bound();
+      rooms.cancel(code, playerId);
     }),
   );
 
