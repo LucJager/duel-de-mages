@@ -25,12 +25,23 @@ export function TrapSprite() {
   return <Img className="sprite" src="/assets/trap.png" alt="" fallback={<span className="trap-dot" />} />;
 }
 
+export function IceSprite() {
+  return <Img className="sprite" src="/assets/ice.png" alt="" fallback={<span className="ice-dot" />} />;
+}
+
+export function MeteorSprite() {
+  return <Img className="sprite" src="/assets/meteor.png" alt="" fallback={<span className="meteor-dot" />} />;
+}
+
 export const ACTION_LABEL: Record<ActionType, string> = {
   move: 'Bouger',
   fireball: 'Boule de feu',
   shield: 'Bouclier',
   teleport: 'Téléport',
   trap: 'Piège',
+  meteor: 'Météore',
+  gust: 'Bourrasque',
+  ice: 'Glace',
   wait: 'Attendre',
 };
 
@@ -40,6 +51,9 @@ const GLYPH: Record<ActionType, string> = {
   shield: '◈',
   teleport: '✧',
   trap: '✕',
+  meteor: '☄',
+  gust: '≋',
+  ice: '❄',
   wait: '…',
 };
 

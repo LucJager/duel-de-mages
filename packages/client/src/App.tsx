@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { GameState, RoomView, RoundResult } from '@dm/shared';
+import type { Mode, RoomView, RoundResult } from '@dm/shared';
 import { isMuted, setMuted } from './audio';
 import { socket } from './socket';
 import { getToken, load, save, sessionRoom } from './storage';
@@ -22,15 +22,13 @@ export function App() {
   const [name, setNameState] = useState(load('dm-name') ?? '');
   const [view, setView] = useState<RoomView | null>(null);
   const [offset, setOffset] = useState(0);
-  const [reveal, setReveal] = useState<{ before: GameState; result: RoundResult } | null>(null);
+  const [reveal, setReveal] = useState<RoundResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
 
   // Salle rejointe : sert à la reprise automatique après reconnexion / rechargement
   const joined = useRef<string | null>(sessionRoom() === urlCode ? urlCode : null);
-  // Dernier état de partie vu en planification = état AVANT la manche résolue
-  const planningGame = useRef<GameState | null>(null);
   // Salle quittée : on ignore les room:state encore en route
   const leftCode = useRef<string | null>(null);
   const nameRef = useRef(name);
@@ -58,7 +56,6 @@ export function App() {
         if (res.ok) return enterRoom(code);
         joined.current = null;
         sessionRoom(null);
-        planningGame.current = null;
         setView(null);
         setReveal(null);
         setError(res.error);
@@ -67,10 +64,10 @@ export function App() {
     [enterRoom],
   );
 
-  const create = () => {
+  const create = (mode: Mode) => {
     setBusy(true);
     leftCode.current = null;
-    socket.emit('room:create', { name: name.trim(), token }, (res) => {
+    socket.emit('room:create', { name: name.trim(), token, mode }, (res) => {
       setBusy(false);
       if (res.ok) enterRoom(res.code);
       else setError(res.error);
@@ -82,7 +79,6 @@ export function App() {
     leftCode.current = joined.current;
     joined.current = null;
     sessionRoom(null);
-    planningGame.current = null;
     setView(null);
     setReveal(null);
     setUrlCode(null);
@@ -94,17 +90,13 @@ export function App() {
       if (v.code === leftCode.current) return;
       setOffset(v.serverNow - Date.now());
       if (v.phase === 'planning' && v.game) {
-        planningGame.current = v.game;
         // Révélation périmée (onglet gelé en arrière-plan) : on la coupe
         const round = v.game.round;
-        setReveal((r) => (r && r.result.round < round ? null : r));
+        setReveal((r) => (r && r.round < round ? null : r));
       }
       setView(v);
     };
-    const onResult = (r: RoundResult) => {
-      const before = planningGame.current;
-      if (before && before.round === r.round) setReveal({ before, result: r });
-    };
+    const onResult = (r: RoundResult) => setReveal(r);
     const onConnect = () => {
       if (joined.current) join(joined.current);
     };
@@ -157,7 +149,7 @@ export function App() {
       />
     );
   } else if (reveal) {
-    screen = <Reveal key={reveal.result.round} before={reveal.before} result={reveal.result} you={view.you} onDone={endReveal} />;
+    screen = <Reveal key={reveal.round} result={reveal} you={view.you} onDone={endReveal} />;
   } else if (view.phase === 'lobby' || !view.game) {
     screen = <Lobby view={view} onLeave={leave} />;
   } else if (view.phase === 'over') {

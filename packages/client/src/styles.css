@@ -328,6 +328,50 @@ button:disabled {
   line-height: 1.35;
 }
 
+/* Choix du mode */
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mode-switch button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border: var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  opacity: 0.6;
+  transition: transform 90ms, opacity 90ms;
+}
+
+.mode-switch button strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.mode-switch button span {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.mode-switch button.on {
+  opacity: 1;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: rotate(-1deg);
+}
+
+.mode-switch button.on:last-child {
+  background: linear-gradient(135deg, #ffd0de, #e6d4ff);
+}
+
 /* ---------- Lobby ---------- */
 .lobby {
   min-height: 100dvh;
@@ -356,6 +400,16 @@ button:disabled {
   letter-spacing: 8px;
   color: var(--orange);
   text-shadow: 4px 4px 0 var(--ink);
+}
+
+.mode-tag {
+  margin: -4px 0 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.mode-tag.chaos {
+  color: #b5179e;
 }
 
 .share {
@@ -519,6 +573,31 @@ button:disabled {
 .g-shield { color: #19a9c4; }
 .g-teleport { color: #a35cff; }
 .g-trap { color: var(--pink); }
+.g-meteor { color: #d9480f; }
+.g-gust { color: #2f9e8f; }
+.g-ice { color: #4dabf7; }
+
+.ice-dot {
+  display: block;
+  width: 80%;
+  height: 80%;
+  margin: 10%;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f1fbff, #9fdcff 55%, #5bb8f0);
+  box-shadow: inset -4px -5px 0 rgba(26, 20, 51, 0.15);
+}
+
+.meteor-dot {
+  display: block;
+  width: 70%;
+  height: 70%;
+  margin: 15%;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: radial-gradient(circle at 35% 35%, #ffb36b, #b5501b 55%, #5c2a12);
+  box-shadow: 0 0 16px var(--orange);
+}
 
 /* ---------- Partie : en-tête ---------- */
 .game {
@@ -613,6 +692,24 @@ button:disabled {
   color: var(--gold);
   text-shadow: 3px 3px 0 var(--ink);
   font-size: 26px;
+  animation: pop 350ms;
+}
+
+.hist-btn {
+  align-self: center;
+}
+
+.chaos-banner {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  padding: 4px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: linear-gradient(90deg, #ff5c8a, #a35cff, #3f8cff);
+  color: #fff;
+  text-shadow: 1px 1px 0 var(--ink);
   animation: pop 350ms;
 }
 
@@ -847,6 +944,11 @@ button:disabled {
   opacity: 0.85;
 }
 
+.ice {
+  z-index: 3;
+  padding: calc(4% / var(--n));
+}
+
 /* Prévisualisation fantôme */
 .ghost-mage {
   z-index: 2;
@@ -879,6 +981,39 @@ button:disabled {
   border-radius: 8px;
   scale: 0.75;
   background: rgba(255, 92, 138, 0.25);
+}
+
+.ghost-meteor {
+  z-index: 1;
+  border: 3px dashed #d9480f;
+  border-radius: 50%;
+  scale: 0.8;
+  background: radial-gradient(circle, rgba(255, 122, 26, 0.5), rgba(217, 72, 15, 0.15) 70%);
+  animation: ghost 1.4s ease-in-out infinite;
+}
+
+.ghost-ice {
+  z-index: 1;
+  border: 3px dashed #4dabf7;
+  border-radius: 8px;
+  scale: 0.8;
+  background: rgba(159, 220, 255, 0.4);
+}
+
+.ghost-gust {
+  z-index: 1;
+  border: 3px dashed #2f9e8f;
+  border-radius: 50%;
+  scale: 2.6;
+  background: radial-gradient(circle, transparent 35%, rgba(47, 158, 143, 0.25) 70%);
+  animation: ghost 1.4s ease-in-out infinite;
+}
+
+.ghost-gust .ghost-n {
+  /* Compense le scale du parent : numéro sur la case du lanceur */
+  scale: 0.45;
+  top: 31%;
+  left: 31%;
 }
 
 .ghost-blocked {
@@ -1042,10 +1177,44 @@ button:disabled {
   filter: grayscale(1);
 }
 
+.action {
+  position: relative;
+}
+
+.cd-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-size: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--pink);
+  color: #fff;
+}
+
+/* En recharge : seuls l'icône et le texte sont grisés, le badge reste lisible */
+.action.cooling:disabled {
+  opacity: 1;
+  filter: none;
+}
+
+.action.cooling > :not(.cd-badge) {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
 .a-fireball { background: #ffd3a8; }
 .a-shield { background: #c8f3ff; }
 .a-teleport { background: #e6d4ff; }
 .a-trap { background: #ffd0de; }
+.a-meteor { background: #ffc9a8; }
+.a-gust { background: #c3f0e2; }
+.a-ice { background: #d6efff; }
 
 .picker {
   display: flex;
@@ -1083,10 +1252,9 @@ button:disabled {
 .dpad-left { grid-area: left; }
 .dpad-right { grid-area: right; }
 
-.validate.done {
-  background: var(--green);
+.hint.ok {
+  color: var(--green);
   opacity: 1;
-  filter: none;
 }
 
 .spectator {
@@ -1373,6 +1541,182 @@ button:disabled {
   80% { translate: 3px 2px; }
 }
 
+/* Bourrasque : onde autour du lanceur, glissé du mage poussé */
+.mage.pushed {
+  transition-delay: 250ms;
+}
+
+.fx-gust {
+  z-index: 4;
+  border-radius: 50%;
+  border: 4px solid rgba(195, 240, 226, 0.95);
+  box-shadow: 0 0 12px rgba(47, 158, 143, 0.9), inset 0 0 12px rgba(47, 158, 143, 0.9);
+  animation: gust 600ms var(--d) ease-out both;
+}
+
+@keyframes gust {
+  0% { opacity: 0; scale: 0.4; }
+  20% { opacity: 1; }
+  100% { opacity: 0; scale: 3; }
+}
+
+/* Glace : apparition, givre, fonte */
+.ice.ice-in {
+  animation: snap 450ms var(--d) cubic-bezier(0.3, 1.8, 0.5, 1) both;
+}
+
+.fx-frost {
+  z-index: 4;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(241, 251, 255, 0.95), rgba(159, 220, 255, 0.6) 45%, transparent 70%);
+  animation: puff 500ms var(--d) ease-out both;
+}
+
+.ice.fx-melt {
+  animation: melt 700ms var(--d) ease-in both;
+}
+
+@keyframes melt {
+  0% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.1 0.2; translate: 0 40%; filter: brightness(1.5); }
+}
+
+/* Météore : chute puis impact */
+.fx-meteor {
+  z-index: 5;
+  overflow: visible;
+}
+
+.fx-meteor-rock {
+  position: absolute;
+  inset: 0;
+  animation: meteor-fall 380ms var(--d) cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+@keyframes meteor-fall {
+  0% { opacity: 0; transform: translate(120%, -320%) scale(0.6); }
+  15% { opacity: 1; }
+  95% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(0, 0) scale(1.2); }
+}
+
+.fx-meteor-boom {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 246, 168, 0.95), rgba(255, 122, 26, 0.85) 40%, transparent 72%);
+  animation: beam 600ms calc(var(--d) + 360ms) ease-out both;
+}
+
+/* ---------- Historique ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow-y: auto;
+  background: rgba(26, 20, 51, 0.85);
+  padding: 16px;
+}
+
+.overlay > .reveal {
+  background: var(--night);
+  border-radius: 18px;
+}
+
+.replay-skip {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 31;
+}
+
+.history {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: pop 250ms;
+}
+
+.history-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-top h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+.history-round {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-head strong {
+  flex: 1;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 18px;
+}
+
+.tag-chaos {
+  background: #e6d4ff;
+}
+
+.history-plan {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pc) 30%, var(--cream));
+}
+
+.history-plan .plan-cards {
+  gap: 4px;
+}
+
+.history-plan .plan-card {
+  width: 46px;
+  height: 40px;
+}
+
+.history-plan .plan-card .chip .icon,
+.history-plan .plan-card .chip .icon-glyph {
+  width: 26px;
+  height: 26px;
+}
+
+.history-events {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.history-events .calm {
+  list-style: none;
+  margin-left: -18px;
+  opacity: 0.6;
+}
+
 /* ---------- Fin ---------- */
 .over {
   min-height: 100dvh;
@@ -1510,10 +1854,6 @@ button:disabled {
 
 /* ---------- Grands écrans ---------- */
 @media (min-width: 700px) {
-  .palette {
-    grid-template-columns: repeat(6, 1fr);
-  }
-
   .board {
     width: min(100%, 56dvh, 520px);
   }
