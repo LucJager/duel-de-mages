@@ -1,4 +1,4 @@
-import type { Action, GameState, PlayerId, RoundResult } from './types';
+import type { Action, GameState, Mode, PlayerId, RoundResult } from './types';
 
 export type RoomPhase = 'lobby' | 'planning' | 'revealing' | 'over';
 
@@ -17,6 +17,7 @@ export interface RoomView {
   hostId: PlayerId;
   you: PlayerId;
   phase: RoomPhase;
+  mode: Mode;
   players: RoomPlayer[];
   game: GameState | null;
   /** Timestamp (ms epoch, horloge serveur) de fin de la phase en cours. */
@@ -25,6 +26,8 @@ export interface RoomView {
   serverNow: number;
   /** Dernière manche résolue (pour rejouer l'animation après reconnexion). */
   lastResult: RoundResult | null;
+  /** Manches résolues de la partie en cours, de la plus ancienne à la plus récente (filtrées pour moi). */
+  history: RoundResult[];
   /** Mon plan déjà soumis pour la manche en cours. */
   myPlan: Action[] | null;
 }
@@ -32,11 +35,14 @@ export interface RoomView {
 export type Ack<T = object> = (res: ({ ok: true } & T) | { ok: false; error: string }) => void;
 
 export interface ClientToServer {
-  'room:create': (p: { name: string; token: string }, ack: Ack<{ code: string; you: PlayerId }>) => void;
+  'room:create': (p: { name: string; token: string; mode: Mode }, ack: Ack<{ code: string; you: PlayerId }>) => void;
   'room:join': (p: { code: string; name: string; token: string }, ack: Ack<{ you: PlayerId }>) => void;
   'room:leave': () => void;
   'game:start': (ack: Ack) => void;
+  /** Exactement slotsFor(game) actions. */
   'plan:submit': (p: { actions: Action[] }, ack: Ack) => void;
+  /** Retire mon plan validé tant que la planification dure. */
+  'plan:cancel': (ack: Ack) => void;
   'game:rematch': (ack: Ack) => void;
 }
 

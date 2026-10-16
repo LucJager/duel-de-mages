@@ -1,12 +1,12 @@
-import type { Dir, Pos } from './types';
+import type { ActionType, Bonus, Dir, Pos } from './types';
 
 export const MAX_HP = 3;
 export const SLOTS = 3;
 export const MAX_FIREBALLS_PER_ROUND = 2;
-export const MAX_SHIELDS_PER_ROUND = 1;
 export const TELEPORT_RANGE = 2;
-/** Utilisé à la manche r → de nouveau disponible à la manche r + TELEPORT_COOLDOWN. */
-export const TELEPORT_COOLDOWN = 2;
+/** Sorts à recharge (1 fois par manche max) : utilisé à la manche r → de nouveau disponible à r + n. */
+export const COOLDOWNS: Partial<Record<ActionType, number>> = { teleport: 2, shield: 2, meteor: 2, gust: 2, ice: 2 };
+export const BONUSES: Bonus[] = ['fireRain', 'recharge', 'heal', 'haste'];
 /** Manche à partir de laquelle l'anneau i (0 = extérieur) devient de la lave. */
 export const LAVA_ROUNDS = [6, 9, 12];
 
